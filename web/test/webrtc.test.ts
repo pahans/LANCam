@@ -46,7 +46,7 @@ describe('createBroadcasterController', () => {
     controller.start(stream);
 
     expect(socket.send).toHaveBeenCalled();
-    const [[callArg]] = socket.send.mock.calls;
+    const [[callArg]] = (socket.send as ReturnType<typeof vi.fn>).mock.calls;
     const msg = JSON.parse(callArg);
     expect(msg).toEqual({ type: 'register-broadcaster', name: expect.any(String) });
   });
@@ -136,7 +136,7 @@ describe('createViewerController', () => {
 
     controller.connect('broadcaster-1');
     const remoteStream = {} as MediaStream;
-    peer.ontrack?.({ streams: [remoteStream] } as RTCTrackEvent);
+    peer.ontrack?.({ streams: [remoteStream] } as unknown as RTCTrackEvent);
 
     expect(onStream).toHaveBeenCalledWith(remoteStream);
   });
