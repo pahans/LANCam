@@ -74,6 +74,28 @@ describe('createSignalingClient', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it('emits a synthetic connected message when the socket opens', () => {
+    const socket = makeFakeSocket();
+    const client = createSignalingClient('ws://example', { wsFactory: () => socket });
+
+    const handler = vi.fn();
+    client.on('connected', handler);
+    socket.emitOpen();
+
+    expect(handler).toHaveBeenCalledWith({ type: 'connected' });
+  });
+
+  it('emits a synthetic disconnected message when the socket closes', () => {
+    const socket = makeFakeSocket();
+    const client = createSignalingClient('ws://example', { wsFactory: () => socket });
+
+    const handler = vi.fn();
+    client.on('disconnected', handler);
+    socket.emitClose();
+
+    expect(handler).toHaveBeenCalledWith({ type: 'disconnected' });
+  });
+
   it('reconnects after the socket closes, unless the client was closed by the caller', () => {
     vi.useFakeTimers();
     const sockets: ReturnType<typeof makeFakeSocket>[] = [];

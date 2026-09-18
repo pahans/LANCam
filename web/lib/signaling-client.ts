@@ -10,21 +10,30 @@ export interface IceCandidateInit {
   usernameFragment?: string | null;
 }
 
+export type PeerRole = 'broadcaster' | 'viewer';
+
 export type ClientMessage =
   | { type: 'register-broadcaster'; name: string }
   | { type: 'request-connection'; targetId: string }
-  | { type: 'offer'; targetId: string; sdp: SdpInit }
-  | { type: 'answer'; targetId: string; sdp: SdpInit }
-  | { type: 'ice-candidate'; targetId: string; candidate: IceCandidateInit };
+  | { type: 'offer'; targetId: string; sdp: SdpInit; role: PeerRole }
+  | { type: 'answer'; targetId: string; sdp: SdpInit; role: PeerRole }
+  | { type: 'ice-candidate'; targetId: string; candidate: IceCandidateInit; role: PeerRole };
 
+// Note: 'connected' and 'disconnected' are synthetic, client-side-only events.
+// The signaling server never sends these over the wire — createSignalingClient
+// emits them locally from the underlying WebSocket's onopen/onclose handlers so
+// consumers (controllers, the page) can observe connection lifecycle via the
+// same on()/emit() machinery used for real server messages.
 export type ServerMessage =
   | { type: 'welcome'; id: string }
   | { type: 'broadcaster-list'; broadcasters: { id: string; name: string }[] }
   | { type: 'request-connection'; from: string }
-  | { type: 'offer'; from: string; sdp: SdpInit }
-  | { type: 'answer'; from: string; sdp: SdpInit }
-  | { type: 'ice-candidate'; from: string; candidate: IceCandidateInit }
-  | { type: 'peer-disconnected'; id: string };
+  | { type: 'offer'; from: string; sdp: SdpInit; role: PeerRole }
+  | { type: 'answer'; from: string; sdp: SdpInit; role: PeerRole }
+  | { type: 'ice-candidate'; from: string; candidate: IceCandidateInit; role: PeerRole }
+  | { type: 'peer-disconnected'; id: string }
+  | { type: 'connected' }
+  | { type: 'disconnected' };
 
 type Handler<T> = (message: T) => void;
 
@@ -73,11 +82,13 @@ export function createSignalingClient(
     ws = socket;
     socket.onopen = () => {
       attempt = 0;
+      emit({ type: 'connected' });
     };
     socket.onmessage = (event) => {
       emit(JSON.parse(event.data) as ServerMessage);
     };
     socket.onclose = () => {
+      emit({ type: 'disconnected' });
       if (closedByCaller) return;
       attempt += 1;
       setTimeout(connect, baseDelay * Math.min(attempt, 5));

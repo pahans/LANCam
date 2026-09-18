@@ -19,6 +19,9 @@ export default function Home() {
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSignalingConnected, setIsSignalingConnected] = useState(false);
+  const [cameraOffline, setCameraOffline] = useState(false);
+  const [connectionFailed, setConnectionFailed] = useState(false);
 
   useEffect(() => {
     if (!SIGNALING_URL) {
@@ -35,11 +38,23 @@ export default function Home() {
     viewerController.onRemoteStream((stream) => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = stream;
     });
+    viewerController.onDisconnected(() => {
+      setViewingId(null);
+      setCameraOffline(true);
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    });
+    viewerController.onConnectionFailed(() => {
+      setConnectionFailed(true);
+    });
 
     const unsubscribeList = client.on('broadcaster-list', (msg) => setBroadcasters(msg.broadcasters));
+    const unsubscribeConnected = client.on('connected', () => setIsSignalingConnected(true));
+    const unsubscribeDisconnected = client.on('disconnected', () => setIsSignalingConnected(false));
 
     return () => {
       unsubscribeList();
+      unsubscribeConnected();
+      unsubscribeDisconnected();
       client.close();
     };
   }, []);
@@ -56,13 +71,21 @@ export default function Home() {
   }
 
   function viewBroadcaster(id: string) {
+    setCameraOffline(false);
+    setConnectionFailed(false);
+    viewerControllerRef.current?.disconnect();
     viewerControllerRef.current?.connect(id);
     setViewingId(id);
+  }
+
+  function retryViewing() {
+    if (viewingId) viewBroadcaster(viewingId);
   }
 
   return (
     <main>
       <h1>LANCam</h1>
+      <p>Signaling: {isSignalingConnected ? 'Connected' : 'Disconnected — retrying...'}</p>
       {error && <p role="alert">{error}</p>}
 
       <section>
@@ -84,6 +107,12 @@ export default function Home() {
             </li>
           ))}
         </ul>
+        {cameraOffline && <p role="status">Camera offline</p>}
+        {connectionFailed && (
+          <p role="alert">
+            Connection failed. <button onClick={retryViewing}>Retry</button>
+          </p>
+        )}
         <video ref={remoteVideoRef} autoPlay playsInline width={320} />
       </section>
     </main>
