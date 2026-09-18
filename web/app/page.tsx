@@ -1,69 +1,91 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { createSignalingClient, type SignalingClient } from '@/lib/signaling-client';
+import { createBroadcasterController, createViewerController } from '@/lib/webrtc';
+
+const SIGNALING_URL = process.env.NEXT_PUBLIC_SIGNALING_URL;
+
+type Broadcaster = { id: string; name: string };
 
 export default function Home() {
+  const clientRef = useRef<SignalingClient | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const broadcasterControllerRef = useRef<ReturnType<typeof createBroadcasterController> | null>(null);
+  const viewerControllerRef = useRef<ReturnType<typeof createViewerController> | null>(null);
+
+  const [broadcasters, setBroadcasters] = useState<Broadcaster[]>([]);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!SIGNALING_URL) {
+      setError('NEXT_PUBLIC_SIGNALING_URL is not configured for this build.');
+      return;
+    }
+
+    const client = createSignalingClient(SIGNALING_URL);
+    clientRef.current = client;
+    broadcasterControllerRef.current = createBroadcasterController(client);
+
+    const viewerController = createViewerController(client);
+    viewerControllerRef.current = viewerController;
+    viewerController.onRemoteStream((stream) => {
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = stream;
+    });
+
+    const unsubscribeList = client.on('broadcaster-list', (msg) => setBroadcasters(msg.broadcasters));
+
+    return () => {
+      unsubscribeList();
+      client.close();
+    };
+  }, []);
+
+  async function startBroadcasting() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      broadcasterControllerRef.current?.start(stream);
+      setIsBroadcasting(true);
+    } catch (err) {
+      setError(`Could not access camera: ${(err as Error).message}`);
+    }
+  }
+
+  function viewBroadcaster(id: string) {
+    viewerControllerRef.current?.connect(id);
+    setViewingId(id);
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main>
+      <h1>LANCam</h1>
+      {error && <p role="alert">{error}</p>}
+
+      <section>
+        <h2>Broadcast this device&apos;s camera</h2>
+        {!isBroadcasting && <button onClick={startBroadcasting}>Start Camera</button>}
+        <video ref={localVideoRef} autoPlay muted playsInline width={320} />
+      </section>
+
+      <section>
+        <h2>Available cameras on this network</h2>
+        {broadcasters.length === 0 && <p>No cameras broadcasting right now.</p>}
+        <ul>
+          {broadcasters.map((b) => (
+            <li key={b.id}>
+              {b.name}{' '}
+              <button onClick={() => viewBroadcaster(b.id)} disabled={viewingId === b.id}>
+                {viewingId === b.id ? 'Viewing' : 'View'}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <video ref={remoteVideoRef} autoPlay playsInline width={320} />
+      </section>
+    </main>
   );
 }
