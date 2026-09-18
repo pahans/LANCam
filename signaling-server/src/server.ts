@@ -17,9 +17,12 @@ const httpServer = createServer((req, res) => {
   res.end();
 });
 
-const wss = new WebSocketServer({ server: httpServer });
+const wss = new WebSocketServer({ server: httpServer, maxPayload: 64 * 1024 });
 const registry = new Registry();
 const sockets = new Map<string, WebSocket>();
+const aliveState = new WeakMap<WebSocket, boolean>();
+
+const HEARTBEAT_INTERVAL_MS = 30000;
 
 function send(id: string, message: ServerMessage): void {
   const socket = sockets.get(id);
@@ -41,6 +44,7 @@ function dispatch(results: RouteResult[]): void {
 wss.on('connection', (socket) => {
   const id = randomUUID();
   sockets.set(id, socket);
+  aliveState.set(socket, true);
   registry.addClient(id);
   send(id, { type: 'welcome', id });
   send(id, { type: 'broadcaster-list', broadcasters: registry.listBroadcasters() });
@@ -59,11 +63,48 @@ wss.on('connection', (socket) => {
     dispatch(routeMessage(registry, id, parsed));
   });
 
+  socket.on('pong', () => {
+    aliveState.set(socket, true);
+  });
+
+  socket.on('error', (err) => {
+    console.warn(`socket error for client ${id}:`, err);
+  });
+
   socket.on('close', () => {
     sockets.delete(id);
     dispatch(routeDisconnect(registry, id));
   });
 });
+
+wss.on('error', (err) => {
+  console.warn('websocket server error:', err);
+});
+
+httpServer.on('error', (err) => {
+  console.warn('http server error:', err);
+});
+
+const heartbeatInterval = setInterval(() => {
+  for (const socket of sockets.values()) {
+    if (aliveState.get(socket) === false) {
+      socket.terminate();
+      continue;
+    }
+    aliveState.set(socket, false);
+    socket.ping();
+  }
+}, HEARTBEAT_INTERVAL_MS);
+
+function shutdown(): void {
+  clearInterval(heartbeatInterval);
+  wss.close();
+  httpServer.close(() => {
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', shutdown);
 
 httpServer.listen(PORT, () => {
   console.log(`signaling server listening on :${PORT}`);
