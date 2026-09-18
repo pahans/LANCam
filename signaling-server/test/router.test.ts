@@ -27,27 +27,27 @@ describe('routeMessage', () => {
     expect(results).toEqual([]);
   });
 
-  it('relays offer and answer with sender id attached', () => {
+  it('relays offer and answer with sender id and role attached', () => {
     const registry = new Registry();
     registry.addClient('a');
     registry.addClient('b');
     const sdp = { type: 'offer' as const, sdp: 'v=0...' };
-    expect(routeMessage(registry, 'a', { type: 'offer', targetId: 'b', sdp })).toEqual([
-      { targetId: 'b', message: { type: 'offer', from: 'a', sdp } },
+    expect(routeMessage(registry, 'a', { type: 'offer', targetId: 'b', sdp, role: 'broadcaster' })).toEqual([
+      { targetId: 'b', message: { type: 'offer', from: 'a', sdp, role: 'broadcaster' } },
     ]);
-    expect(routeMessage(registry, 'b', { type: 'answer', targetId: 'a', sdp })).toEqual([
-      { targetId: 'a', message: { type: 'answer', from: 'b', sdp } },
+    expect(routeMessage(registry, 'b', { type: 'answer', targetId: 'a', sdp, role: 'viewer' })).toEqual([
+      { targetId: 'a', message: { type: 'answer', from: 'b', sdp, role: 'viewer' } },
     ]);
   });
 
-  it('relays ice-candidate with sender id attached', () => {
+  it('relays ice-candidate with sender id and role attached', () => {
     const registry = new Registry();
     registry.addClient('a');
     registry.addClient('b');
     const candidate = { candidate: 'candidate:1 ...' };
-    expect(routeMessage(registry, 'b', { type: 'ice-candidate', targetId: 'a', candidate })).toEqual([
-      { targetId: 'a', message: { type: 'ice-candidate', from: 'b', candidate } },
-    ]);
+    expect(
+      routeMessage(registry, 'b', { type: 'ice-candidate', targetId: 'a', candidate, role: 'viewer' })
+    ).toEqual([{ targetId: 'a', message: { type: 'ice-candidate', from: 'b', candidate, role: 'viewer' } }]);
   });
 });
 

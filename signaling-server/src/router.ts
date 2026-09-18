@@ -20,16 +20,23 @@ export function routeMessage(registry: Registry, senderId: string, message: Clie
     }
     case 'offer': {
       if (!registry.getClient(message.targetId)) return [];
-      return [{ targetId: message.targetId, message: { type: 'offer', from: senderId, sdp: message.sdp } }];
+      return [
+        { targetId: message.targetId, message: { type: 'offer', from: senderId, sdp: message.sdp, role: message.role } },
+      ];
     }
     case 'answer': {
       if (!registry.getClient(message.targetId)) return [];
-      return [{ targetId: message.targetId, message: { type: 'answer', from: senderId, sdp: message.sdp } }];
+      return [
+        { targetId: message.targetId, message: { type: 'answer', from: senderId, sdp: message.sdp, role: message.role } },
+      ];
     }
     case 'ice-candidate': {
       if (!registry.getClient(message.targetId)) return [];
       return [
-        { targetId: message.targetId, message: { type: 'ice-candidate', from: senderId, candidate: message.candidate } },
+        {
+          targetId: message.targetId,
+          message: { type: 'ice-candidate', from: senderId, candidate: message.candidate, role: message.role },
+        },
       ];
     }
   }
