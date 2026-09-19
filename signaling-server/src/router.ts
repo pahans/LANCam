@@ -1,5 +1,5 @@
-import type { Registry } from './registry';
-import type { ClientMessage, ServerMessage } from './protocol';
+import type { Registry } from './registry.js';
+import type { ClientMessage, ServerMessage } from './protocol.js';
 
 export interface RouteResult {
   targetId: string | 'broadcast';

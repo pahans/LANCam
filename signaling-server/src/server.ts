@@ -1,9 +1,9 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import { Registry } from './registry';
-import { routeMessage, routeDisconnect, type RouteResult } from './router';
-import { parseClientMessage, InvalidMessageError, type ServerMessage } from './protocol';
+import { Registry } from './registry.js';
+import { routeMessage, routeDisconnect, type RouteResult } from './router.js';
+import { parseClientMessage, InvalidMessageError, type ServerMessage } from './protocol.js';
 
 const PORT = Number(process.env.PORT) || 8080;
 
