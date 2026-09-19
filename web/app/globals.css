@@ -1,17 +1,21 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --bg: #0b0f0e;
+  --surface: #14191a;
+  --surface-2: #1c2220;
+  --border: #262e2b;
+  --text: #f4f6f5;
+  --text-dim: #8c9793;
+  --accent: #35d98a;
+  --accent-wash: rgba(53, 217, 138, 0.15);
+  --danger: #e5453d;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-display, sans-serif);
+  --font-body: var(--font-body, sans-serif);
 }
 
 html {
   height: 100%;
+  color-scheme: dark;
 }
 
 html,
@@ -24,26 +28,37 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-family: var(--font-body), 'IBM Plex Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
-  padding: 0;
+}
+
+body,
+h1,
+h2,
+p,
+ul {
   margin: 0;
+  padding: 0;
+}
+
+ul {
+  list-style: none;
 }
 
 a {
-  color: inherit;
+  color: var(--accent);
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
