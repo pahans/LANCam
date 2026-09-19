@@ -28,6 +28,7 @@ function BackIcon() {
 
 export default function Home() {
   const clientRef = useRef<SignalingClient | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const broadcasterControllerRef = useRef<ReturnType<typeof createBroadcasterController> | null>(null);
@@ -80,7 +81,7 @@ export default function Home() {
   async function startBroadcasting() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      localStreamRef.current = stream;
       broadcasterControllerRef.current?.start(stream);
       setIsBroadcasting(true);
       setError(null);
@@ -91,11 +92,17 @@ export default function Home() {
 
   function stopBroadcasting() {
     broadcasterControllerRef.current?.stop();
-    const stream = localVideoRef.current?.srcObject as MediaStream | null;
-    stream?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     setIsBroadcasting(false);
   }
+
+  useEffect(() => {
+    if (isBroadcasting && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+  }, [isBroadcasting]);
 
   function viewBroadcaster(id: string) {
     setCameraOffline(false);

@@ -8,9 +8,6 @@
   --accent: #35d98a;
   --accent-wash: rgba(53, 217, 138, 0.15);
   --danger: #e5453d;
-
-  --font-display: var(--font-display, sans-serif);
-  --font-body: var(--font-body, sans-serif);
 }
 
 html {
